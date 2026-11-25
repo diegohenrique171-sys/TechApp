@@ -1,71 +1,47 @@
-$raiz      = "C:\AutomacaoRM_ReleasePatch"
-$webDir    = "$raiz\TechApp"
-$agenteDir = "$raiz\AgenteRM_Src"
-$pacoteDir = "$raiz\Pacote_Distribuicao"
-
-New-Item -ItemType Directory -Path $webDir, $agenteDir, $pacoteDir -Force | Out-Null
-
-# ==========================================================
-# 1. GERA O FRONTEND (index.html) PARA O REPOSITÓRIO TechApp
-# ==========================================================
-$indexHtml = @'
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TechApp — Orquestrador TOTVS RM</title>
+  <title>Orquestrador TOTVS RM — Painel Remoto</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
-    .container { max-width: 1120px; margin: auto; }
+    .container { max-width: 1100px; margin: auto; }
     .card { background: #1e293b; border-radius: 8px; padding: 18px; margin-bottom: 16px; border: 1px solid #334155; }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    h1 { font-size: 20px; margin: 0; color: #38bdf8; }
-    h2 { font-size: 14px; margin: 0 0 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    h1 { font-size: 20px; margin: 0 0 12px; color: #38bdf8; }
+    h2 { font-size: 15px; margin: 0 0 10px; color: #94a3b8; text-transform: uppercase; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
     .list-box { max-height: 200px; overflow-y: auto; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155; }
     label { display: block; margin-bottom: 6px; font-size: 14px; cursor: pointer; }
     input[type="text"], input[type="password"], select {
-      width: 100%; padding: 9px; border-radius: 5px; border: 1px solid #475569;
+      width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #475569;
       background: #0f172a; color: #fff; box-sizing: border-box; margin-bottom: 10px;
     }
     .btns { display: flex; gap: 10px; flex-wrap: wrap; }
-    button { padding: 10px 18px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
-    button:hover { opacity: 0.9; }
-    .btn-start   { background: #16a34a; color: #fff; }
-    .btn-pause   { background: #d97706; color: #fff; }
-    .btn-resume  { background: #0284c7; color: #fff; }
-    .btn-stop    { background: #dc2626; color: #fff; }
-    .btn-refresh { background: #334155; color: #e2e8f0; padding: 6px 12px; font-size: 12px; }
+    button { padding: 10px 18px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .btn-start { background: #16a34a; color: #fff; }
+    .btn-pause { background: #d97706; color: #fff; }
+    .btn-stop  { background: #dc2626; color: #fff; }
     #logBox {
       background: #020617; color: #4ade80; font-family: Consolas, monospace; font-size: 13px;
-      height: 330px; overflow-y: auto; padding: 12px; border-radius: 6px; border: 1px solid #334155; white-space: pre-wrap;
+      height: 320px; overflow-y: auto; padding: 12px; border-radius: 6px; border: 1px solid #334155; white-space: pre-wrap;
     }
-    .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #334155; }
-    .footer { text-align: right; color: #64748b; font-size: 12px; margin-top: 8px; }
+    .badge { padding: 3px 8px; border-radius: 12px; font-size: 12px; background: #334155; }
   </style>
 </head>
 <body>
 <div class="container">
   <div class="card">
-    <div class="header">
-      <h1>TechApp — Orquestrador Pós-Instalação TOTVS RM</h1>
-      <div>
-        <span id="statusBadge" class="badge">Aguardando</span>
-        <button class="btn-refresh" onclick="carregarServidores()">↻ Atualizar Lista</button>
-      </div>
-    </div>
-    <label>Servidor / Máquina Conectada:</label>
+    <h1>Orquestrador Pós-Instalação TOTVS RM <span id="statusBadge" class="badge">Aguardando</span></h1>
+    <label>Servidor / Cliente Conectado:</label>
     <select id="selServidor" onchange="carregarItensServidor()"></select>
-    <div id="infoServidor" style="font-size:12px; color:#94a3b8;"></div>
   </div>
 
   <div class="grid">
     <div class="card">
       <h2>Destinos de Portais</h2>
-      <div id="listaPortais" class="list-box">Nenhum portal carregado.</div>
+      <div id="listaPortais" class="list-box"></div>
       <div style="margin-top:10px;">
         <label><input type="checkbox" id="chkCorpore" checked> Copiar Corpore.Net (preserva web.config)</label>
         <label><input type="checkbox" id="chkFrame" checked> Copiar FrameHTML</label>
@@ -74,7 +50,7 @@ $indexHtml = @'
 
     <div class="card">
       <h2>Bases de Dados (Alias.dat)</h2>
-      <div id="listaAliases" class="list-box">Nenhum alias carregado.</div>
+      <div id="listaAliases" class="list-box"></div>
       <div style="margin-top:10px;">
         <label><input type="checkbox" id="chkAtualizador" checked> Executar Atualizador de Base</label>
         <label><input type="checkbox" id="chkAudit" checked> Executar TOTVS Audit</label>
@@ -98,40 +74,31 @@ $indexHtml = @'
       <label style="display:inline-block;"><input type="checkbox" id="chkIniciarServ" checked> Iniciar serviço RM ao final</label>
     </div>
     <div class="btns">
-      <button class="btn-start"  onclick="iniciarExecucao()">▶ Iniciar Remotamente</button>
-      <button class="btn-pause"  onclick="enviarControle('PAUSAR')">⏸ Pausar</button>
-      <button class="btn-resume" onclick="enviarControle('RETOMAR')">⏯ Retomar</button>
-      <button class="btn-stop"   onclick="enviarControle('INTERROMPER')">⏹ Interromper</button>
+      <button class="btn-start" onclick="iniciarExecucao()">▶ Iniciar Remotamente</button>
+      <button class="btn-pause" onclick="enviarControle('PAUSAR')">⏸ Pausar</button>
+      <button class="btn-start" onclick="enviarControle('RETOMAR')">⏯ Retomar</button>
+      <button class="btn-stop"  onclick="enviarControle('INTERROMPER')">⏹ Interromper</button>
     </div>
   </div>
 
   <div class="card">
     <h2>Log de Execução ao Vivo</h2>
-    <div id="logBox">Conectado ao TechApp. Aguardando comando...</div>
+    <div id="logBox">Conectado ao painel. Selecione um servidor e clique em Iniciar...</div>
   </div>
-  <div class="footer">Desenvolvido por Diego Souza | diegohsouza@icloud.com</div>
 </div>
 
 <script>
-  const SUPABASE_URL = "https://fagmdjjqpvymsiaouels.supabase.co";
-  const SUPABASE_KEY = "COLE_SUA_ANON_KEY_AQUI";
+  const SUPABASE_URL = "SUA_SUPABASE_URL";
+  const SUPABASE_KEY = "SUA_SUPABASE_ANON_KEY";
   const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
   let servidores = [];
   let execucaoAtualId = null;
 
   async function carregarServidores() {
-    const { data, error } = await db.from('servidores').select('*').order('nome_cliente');
-    if (error) {
-      document.getElementById('logBox').textContent = "[ERRO SUPABASE] " + error.message;
-      return;
-    }
+    const { data } = await db.from('servidores').select('*').order('nome_cliente');
     servidores = data || [];
     const sel = document.getElementById('selServidor');
-    if (servidores.length === 0) {
-      sel.innerHTML = '<option value="">Nenhum AgenteRM conectado ainda...</option>';
-      return;
-    }
     sel.innerHTML = servidores.map(s => `<option value="${s.id}">${s.nome_cliente} (${s.id})</option>`).join('');
     carregarItensServidor();
   }
@@ -141,14 +108,11 @@ $indexHtml = @'
     const srv = servidores.find(s => s.id === id);
     if (!srv) return;
 
-    document.getElementById('infoServidor').textContent =
-      `Origem RM: ${srv.origem_rm || '-'} | Destino Portais: ${srv.destino_portais || '-'} | Último sinal: ${new Date(srv.ultimo_ping).toLocaleTimeString()}`;
-
     document.getElementById('listaPortais').innerHTML = (srv.portais_disponiveis || [])
-      .map(p => `<label><input type="checkbox" class="chk-portal" value="${p}"> ${p}</label>`).join('') || "Nenhum portal encontrado.";
+      .map(p => `<label><input type="checkbox" class="chk-portal" value="${p}"> ${p}</label>`).join('');
 
     document.getElementById('listaAliases').innerHTML = (srv.aliases_disponiveis || [])
-      .map(a => `<label><input type="checkbox" class="chk-alias" value="${a}"> ${a}</label>`).join('') || "Nenhum alias encontrado.";
+      .map(a => `<label><input type="checkbox" class="chk-alias" value="${a}"> ${a}</label>`).join('');
   }
 
   async function iniciarExecucao() {
@@ -157,9 +121,6 @@ $indexHtml = @'
 
     const portais = [...document.querySelectorAll('.chk-portal:checked')].map(el => el.value);
     const aliases = [...document.querySelectorAll('.chk-alias:checked')].map(el => el.value);
-
-    if (portais.length === 0 && aliases.length === 0)
-      return alert("Marque pelo menos um Portal ou uma Base (Alias).");
 
     const parametros = {
       usuario_rm: document.getElementById('txtUsuario').value,
@@ -174,9 +135,9 @@ $indexHtml = @'
       aliases_selecionados: aliases
     };
 
-    document.getElementById('logBox').textContent = "[TechApp] Enviando ordem para o agente local...\n";
+    document.getElementById('logBox').textContent = "[Painel] Enviando ordem de execução para o servidor...\n";
     const { data, error } = await db.from('execucoes')
-      .insert([{ servidor_id: servidorId, status: 'PENDENTE', comando_controle: 'NENHUM', parametros }])
+      .insert([{ servidor_id: servidorId, status: 'PENDENTE', parametros }])
       .select()
       .single();
 
@@ -208,496 +169,3 @@ $indexHtml = @'
 </script>
 </body>
 </html>
-'@
-[System.IO.File]::WriteAllText("$webDir\index.html", $indexHtml, [System.Text.UTF8Encoding]::new($false))
-
-# ==========================================================
-# 2. GERA E COMPILA O AGENTE WINDOWS (AgenteRM.exe)
-# ==========================================================
-$agenteCs = @'
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Runtime.InteropServices;
-using System.ServiceProcess;
-using System.Text;
-using System.Threading;
-using System.Web.Script.Serialization;
-using System.Xml.Linq;
-
-namespace AgenteRemotoRM
-{
-    class Program
-    {
-        [DllImport("kernel32.dll")] static extern IntPtr OpenThread(int dwDesiredAccess, bool bInheritHandle, uint dwThreadId);
-        [DllImport("kernel32.dll")] static extern uint SuspendThread(IntPtr hThread);
-        [DllImport("kernel32.dll")] static extern int ResumeThread(IntPtr hThread);
-        [DllImport("kernel32.dll")] static extern bool CloseHandle(IntPtr hObject);
-
-        private static readonly HttpClient http = new HttpClient();
-        private static readonly JavaScriptSerializer json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
-
-        private static string SupabaseUrl = "https://fagmdjjqpvymsiaouels.supabase.co";
-        private static string SupabaseKey = "";
-        private static string ServidorId = Environment.MachineName;
-        private static string NomeCliente = Environment.MachineName;
-        private static string OrigemRm = @"C:\totvs\CorporeRM\RM.Net";
-        private static string OrigemPortal = @"C:\Temp\Portal";
-        private static string DestinoPortais = @"C:\inetpub\wwwroot";
-        private static string ServicoRm = "RM.Host.Service";
-
-        private static Process _procAtivo = null;
-        private static bool _pausado = false;
-        private static bool _interromper = false;
-
-        static void Main(string[] args)
-        {
-            Console.OutputEncoding = Encoding.UTF8;
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
-            CarregarConfiguracao();
-            if (string.IsNullOrWhiteSpace(SupabaseKey) || SupabaseKey.Contains("COLE_SUA"))
-            {
-                Console.WriteLine("[AVISO] Configure 'supabase_anon_key' em agente_config.json e abra novamente.");
-                Console.ReadLine();
-                return;
-            }
-
-            http.DefaultRequestHeaders.Clear();
-            http.DefaultRequestHeaders.Add("apikey", SupabaseKey);
-            http.DefaultRequestHeaders.Add("Authorization", "Bearer " + SupabaseKey);
-
-            Console.WriteLine("=== TechApp Agente RM Iniciado ===");
-            Console.WriteLine($"Servidor ID : {ServidorId} ({NomeCliente})");
-            Console.WriteLine($"Supabase    : {SupabaseUrl}");
-
-            RegistrarServidorNoSupabase();
-
-            var ultimoHeartbeat = DateTime.Now;
-            while (true)
-            {
-                try
-                {
-                    if ((DateTime.Now - ultimoHeartbeat).TotalSeconds >= 30)
-                    {
-                        RegistrarServidorNoSupabase();
-                        ultimoHeartbeat = DateTime.Now;
-                    }
-
-                    var pendente = BuscarExecucaoPendente();
-                    if (pendente != null)
-                    {
-                        ProcessarExecucao(pendente);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("[Loop Erro] " + ex.Message);
-                }
-                Thread.Sleep(3000);
-            }
-        }
-
-        private static void CarregarConfiguracao()
-        {
-            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            string cfgPath = Path.Combine(baseDir, "agente_config.json");
-            string localCfg = Path.Combine(baseDir, "config.json");
-
-            if (!File.Exists(cfgPath))
-            {
-                var dic = new Dictionary<string, object>
-                {
-                    { "supabase_url", SupabaseUrl },
-                    { "supabase_anon_key", "COLE_SUA_ANON_KEY_AQUI" },
-                    { "servidor_id", Environment.MachineName },
-                    { "nome_cliente", Environment.MachineName },
-                    { "origem_rm", OrigemRm },
-                    { "origem_portal", OrigemPortal },
-                    { "destino_portais", DestinoPortais },
-                    { "servico_rm", ServicoRm }
-                };
-
-                if (File.Exists(localCfg))
-                {
-                    try
-                    {
-                        var old = json.Deserialize<Dictionary<string, object>>(File.ReadAllText(localCfg, Encoding.UTF8));
-                        if (old.ContainsKey("origem_rm")) dic["origem_rm"] = old["origem_rm"];
-                        if (old.ContainsKey("origem_portal")) dic["origem_portal"] = old["origem_portal"];
-                        if (old.ContainsKey("destino_portais")) dic["destino_portais"] = old["destino_portais"];
-                        if (old.ContainsKey("servico_rm")) dic["servico_rm"] = old["servico_rm"];
-                    }
-                    catch { }
-                }
-                File.WriteAllText(cfgPath, json.Serialize(dic), Encoding.UTF8);
-            }
-
-            var cfg = json.Deserialize<Dictionary<string, object>>(File.ReadAllText(cfgPath, Encoding.UTF8));
-            if (cfg.ContainsKey("supabase_url")) SupabaseUrl = cfg["supabase_url"].ToString().TrimEnd('/');
-            if (cfg.ContainsKey("supabase_anon_key")) SupabaseKey = cfg["supabase_anon_key"].ToString();
-            if (cfg.ContainsKey("servidor_id")) ServidorId = cfg["servidor_id"].ToString();
-            if (cfg.ContainsKey("nome_cliente")) NomeCliente = cfg["nome_cliente"].ToString();
-            if (cfg.ContainsKey("origem_rm")) OrigemRm = cfg["origem_rm"].ToString();
-            if (cfg.ContainsKey("origem_portal")) OrigemPortal = cfg["origem_portal"].ToString();
-            if (cfg.ContainsKey("destino_portais")) DestinoPortais = cfg["destino_portais"].ToString();
-            if (cfg.ContainsKey("servico_rm")) ServicoRm = cfg["servico_rm"].ToString();
-        }
-
-        private static List<string> LerAliases()
-        {
-            var lista = new List<string>();
-            string path = Path.Combine(OrigemRm, "Alias.dat");
-            if (!File.Exists(path)) return lista;
-            try
-            {
-                var doc = XDocument.Load(path);
-                foreach (var el in doc.Descendants().Where(x => !x.HasElements && x.Name.LocalName.Equals("Alias", StringComparison.OrdinalIgnoreCase)))
-                {
-                    string v = (el.Value ?? "").Trim();
-                    if (!string.IsNullOrEmpty(v) && !lista.Contains(v, StringComparer.OrdinalIgnoreCase))
-                        lista.Add(v);
-                }
-                lista.Sort(StringComparer.OrdinalIgnoreCase);
-            }
-            catch { }
-            return lista;
-        }
-
-        private static List<string> LerPortais()
-        {
-            var lista = new List<string>();
-            if (!Directory.Exists(DestinoPortais)) return lista;
-            foreach (var dir in Directory.GetDirectories(DestinoPortais))
-            {
-                string nome = Path.GetFileName(dir);
-                if (nome.Equals("RM.Net", StringComparison.OrdinalIgnoreCase)) continue;
-                if (nome.IndexOf("Corpore", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    nome.IndexOf("FrameHTML", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    Directory.Exists(Path.Combine(dir, "Corpore.Net")) ||
-                    Directory.Exists(Path.Combine(dir, "FrameHTML")) ||
-                    File.Exists(Path.Combine(dir, "web.config")))
-                {
-                    lista.Add(nome);
-                }
-            }
-            lista.Sort(StringComparer.OrdinalIgnoreCase);
-            return lista;
-        }
-
-        private static void RegistrarServidorNoSupabase()
-        {
-            var payload = new Dictionary<string, object>
-            {
-                { "id", ServidorId },
-                { "nome_cliente", NomeCliente },
-                { "origem_rm", OrigemRm },
-                { "origem_portal", OrigemPortal },
-                { "destino_portais", DestinoPortais },
-                { "servico_rm", ServicoRm },
-                { "aliases_disponiveis", LerAliases() },
-                { "portais_disponiveis", LerPortais() },
-                { "ultimo_ping", DateTime.UtcNow.ToString("o") }
-            };
-
-            var req = new HttpRequestMessage(HttpMethod.Post, $"{SupabaseUrl}/rest/v1/servidores?on_conflict=id");
-            req.Headers.Add("Prefer", "resolution=merge-duplicates");
-            req.Content = new StringContent(json.Serialize(payload), Encoding.UTF8, "application/json");
-            http.SendAsync(req).Wait();
-        }
-
-        private static Dictionary<string, object> BuscarExecucaoPendente()
-        {
-            string url = $"{SupabaseUrl}/rest/v1/execucoes?servidor_id=eq.{Uri.EscapeDataString(ServidorId)}&status=eq.PENDENTE&order=criado_em.asc&limit=1";
-            string resp = http.GetStringAsync(url).Result;
-            var arr = json.Deserialize<List<Dictionary<string, object>>>(resp);
-            return (arr != null && arr.Count > 0) ? arr[0] : null;
-        }
-
-        private static void AtualizarStatusExecucao(string execId, string status, string cmd = null)
-        {
-            var body = new Dictionary<string, object>
-            {
-                { "status", status },
-                { "atualizado_em", DateTime.UtcNow.ToString("o") }
-            };
-            if (cmd != null) body["comando_controle"] = cmd;
-
-            var req = new HttpRequestMessage(new HttpMethod("PATCH"), $"{SupabaseUrl}/rest/v1/execucoes?id=eq.{execId}");
-            req.Content = new StringContent(json.Serialize(body), Encoding.UTF8, "application/json");
-            http.SendAsync(req).Wait();
-        }
-
-        private static void EnviarLog(string execId, string msg)
-        {
-            string linha = $"[{DateTime.Now:HH:mm:ss}] {msg}";
-            Console.WriteLine(linha);
-            try
-            {
-                var body = new Dictionary<string, object>
-                {
-                    { "execucao_id", execId },
-                    { "mensagem", linha }
-                };
-                var content = new StringContent(json.Serialize(body), Encoding.UTF8, "application/json");
-                http.PostAsync($"{SupabaseUrl}/rest/v1/logs_execucao", content).Wait();
-            }
-            catch { }
-        }
-
-        private static void MonitorarControleRemoto(string execId)
-        {
-            while (!_interromper)
-            {
-                try
-                {
-                    string resp = http.GetStringAsync($"{SupabaseUrl}/rest/v1/execucoes?id=eq.{execId}&select=comando_controle,status").Result;
-                    var arr = json.Deserialize<List<Dictionary<string, object>>>(resp);
-                    if (arr != null && arr.Count > 0)
-                    {
-                        string st = (arr[0]["status"] ?? "").ToString();
-                        if (st == "CONCLUIDO" || st == "ERRO" || st == "INTERROMPIDO") break;
-
-                        string cmd = (arr[0]["comando_controle"] ?? "NENHUM").ToString();
-                        if (cmd == "PAUSAR" && !_pausado)
-                        {
-                            _pausado = true;
-                            SuspenderOuRetomarProcesso(_procAtivo, true);
-                            AtualizarStatusExecucao(execId, "PAUSADO", "NENHUM");
-                            EnviarLog(execId, "⏸ Execução PAUSADA remotamente pelo painel.");
-                        }
-                        else if (cmd == "RETOMAR" && _pausado)
-                        {
-                            _pausado = false;
-                            SuspenderOuRetomarProcesso(_procAtivo, false);
-                            AtualizarStatusExecucao(execId, "RODANDO", "NENHUM");
-                            EnviarLog(execId, "⏯ Execução RETOMADA remotamente pelo painel.");
-                        }
-                        else if (cmd == "INTERROMPER")
-                        {
-                            _interromper = true;
-                            try { if (_procAtivo != null && !_procAtivo.HasExited) _procAtivo.Kill(); } catch { }
-                            AtualizarStatusExecucao(execId, "INTERROMPIDO", "NENHUM");
-                            EnviarLog(execId, "⏹ Execução INTERROMPIDA remotamente pelo painel.");
-                            break;
-                        }
-                    }
-                }
-                catch { }
-                Thread.Sleep(2000);
-            }
-        }
-
-        private static void SuspenderOuRetomarProcesso(Process p, bool suspender)
-        {
-            if (p == null) return;
-            try
-            {
-                p.Refresh();
-                if (p.HasExited) return;
-                foreach (ProcessThread t in p.Threads)
-                {
-                    IntPtr h = OpenThread(0x0002, false, (uint)t.Id);
-                    if (h != IntPtr.Zero)
-                    {
-                        if (suspender) SuspendThread(h); else ResumeThread(h);
-                        CloseHandle(h);
-                    }
-                }
-            }
-            catch { }
-        }
-
-        private static void ProcessarExecucao(Dictionary<string, object> exec)
-        {
-            string execId = exec["id"].ToString();
-            var p = (Dictionary<string, object>)exec["parametros"];
-
-            _pausado = false;
-            _interromper = false;
-            AtualizarStatusExecucao(execId, "RODANDO", "NENHUM");
-            EnviarLog(execId, "▶ Iniciando execução remota no servidor " + ServidorId);
-
-            var monitorThread = new Thread(() => MonitorarControleRemoto(execId)) { IsBackground = true };
-            monitorThread.Start();
-
-            try
-            {
-                bool pararServ = Convert.ToBoolean(p["parar_servico"]);
-                bool iniciarServ = Convert.ToBoolean(p["iniciar_servico"]);
-                bool copCorpore = Convert.ToBoolean(p["copiar_corpore"]);
-                bool copFrame = Convert.ToBoolean(p["copiar_framehtml"]);
-                bool fazerAtu = Convert.ToBoolean(p["fazer_atualizar_db"]);
-                bool fazerAud = Convert.ToBoolean(p["fazer_audit"]);
-                string usuario = p["usuario_rm"].ToString();
-                string senha = p["senha_rm"].ToString();
-
-                var portais = ((System.Collections.ArrayList)p["portais_selecionados"]).Cast<string>().ToList();
-                var aliases = ((System.Collections.ArrayList)p["aliases_selecionados"]).Cast<string>().ToList();
-
-                if (pararServ) GerenciarServico(execId, ServicoRm, true);
-
-                foreach (var portal in portais)
-                {
-                    if (_interromper) return;
-                    string baseDest = Path.Combine(DestinoPortais, portal);
-                    if (copCorpore)
-                    {
-                        string orig = LocalizarSubpasta(OrigemPortal, "Corpore.Net");
-                        string dest = portal.IndexOf("Corpore", StringComparison.OrdinalIgnoreCase) >= 0 ? baseDest : Path.Combine(baseDest, "Corpore.Net");
-                        if (!string.IsNullOrEmpty(orig) && Directory.Exists(dest))
-                            RodarRobocopy(execId, orig, dest, true);
-                    }
-                    if (copFrame)
-                    {
-                        string orig = LocalizarSubpasta(OrigemPortal, "FrameHTML");
-                        string dest = portal.IndexOf("FrameHTML", StringComparison.OrdinalIgnoreCase) >= 0 ? baseDest : Path.Combine(baseDest, "FrameHTML");
-                        if (!string.IsNullOrEmpty(orig) && Directory.Exists(dest))
-                            RodarRobocopy(execId, orig, dest, false);
-                    }
-                }
-
-                string motorExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "MotorRM.exe");
-                if (fazerAtu)
-                {
-                    string exeAtu = Path.Combine(OrigemRm, "RM.Atualizador.exe");
-                    foreach (var alias in aliases)
-                    {
-                        if (_interromper) return;
-                        EnviarLog(execId, $"[Atualizador] Executando base '{alias}'...");
-                        RodarMotor(execId, motorExe, $"--modo atualizador --exe \"{exeAtu}\" --alias \"{alias}\" --usuario \"{usuario}\" --senha \"{senha}\" --ambiente producao");
-                    }
-                }
-
-                if (fazerAud)
-                {
-                    string exeAud = Path.Combine(OrigemRm, "RM.TotvsAudit.exe");
-                    foreach (var alias in aliases)
-                    {
-                        if (_interromper) return;
-                        EnviarLog(execId, $"[TOTVS Audit] Executando base '{alias}'...");
-                        RodarMotor(execId, motorExe, $"--modo audit --exe \"{exeAud}\" --alias \"{alias}\" --usuario \"{usuario}\" --senha \"{senha}\"");
-                    }
-                }
-
-                if (iniciarServ && !_interromper) GerenciarServico(execId, ServicoRm, false);
-
-                if (!_interromper)
-                {
-                    AtualizarStatusExecucao(execId, "CONCLUIDO");
-                    EnviarLog(execId, "✅ Todas as etapas foram concluídas com sucesso!");
-                }
-            }
-            catch (Exception ex)
-            {
-                if (!_interromper)
-                {
-                    AtualizarStatusExecucao(execId, "ERRO");
-                    EnviarLog(execId, "❌ [ERRO] " + ex.Message);
-                }
-            }
-            finally
-            {
-                _interromper = true;
-            }
-        }
-
-        private static string LocalizarSubpasta(string baseDir, string sub)
-        {
-            if (string.IsNullOrWhiteSpace(baseDir) || !Directory.Exists(baseDir)) return "";
-            if (Path.GetFileName(baseDir.TrimEnd('\\')).Equals(sub, StringComparison.OrdinalIgnoreCase)) return baseDir;
-            string d = Path.Combine(baseDir, sub);
-            if (Directory.Exists(d)) return d;
-            string pai = Directory.GetParent(baseDir.TrimEnd('\\'))?.FullName ?? "";
-            string irmao = Path.Combine(pai, sub);
-            return Directory.Exists(irmao) ? irmao : "";
-        }
-
-        private static void GerenciarServico(string execId, string nome, bool parar)
-        {
-            try
-            {
-                using (var sc = new ServiceController(nome))
-                {
-                    if (parar && sc.Status != ServiceControllerStatus.Stopped)
-                    {
-                        EnviarLog(execId, $"[Serviço] Parando {nome}...");
-                        sc.Stop();
-                        sc.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromMinutes(2));
-                    }
-                    else if (!parar && sc.Status != ServiceControllerStatus.Running)
-                    {
-                        EnviarLog(execId, $"[Serviço] Iniciando {nome}...");
-                        sc.Start();
-                        sc.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromMinutes(2));
-                    }
-                }
-            }
-            catch (Exception ex) { EnviarLog(execId, $"[Serviço Aviso] {ex.Message}"); }
-        }
-
-        private static void RodarRobocopy(string execId, string orig, string dest, bool preservarWebConfig)
-        {
-            string xf = preservarWebConfig ? "/XF web.config Web.config" : "";
-            EnviarLog(execId, $"[Robocopy] {orig} -> {dest}");
-            var psi = new ProcessStartInfo("robocopy.exe", $"\"{orig}\" \"{dest}\" /E /R:2 /W:2 /NP /NFL /NDL /NJH /NJS {xf}")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true
-            };
-            using (var p = Process.Start(psi))
-            {
-                _procAtivo = p;
-                p.OutputDataReceived += (s, e) => { };
-                p.BeginOutputReadLine();
-                p.WaitForExit();
-                _procAtivo = null;
-                if (p.ExitCode >= 8) throw new Exception($"Robocopy falhou ({p.ExitCode}) em {dest}");
-            }
-        }
-
-        private static void RodarMotor(string execId, string motorExe, string args)
-        {
-            var psi = new ProcessStartInfo(motorExe, args)
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = Encoding.UTF8,
-                StandardErrorEncoding = Encoding.UTF8
-            };
-            var erros = new StringBuilder();
-            using (var p = new Process { StartInfo = psi })
-            {
-                _procAtivo = p;
-                p.OutputDataReceived += (s, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) EnviarLog(execId, e.Data); };
-                p.ErrorDataReceived  += (s, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) { erros.AppendLine(e.Data); EnviarLog(execId, "[ERR] " + e.Data); } };
-                p.Start();
-                p.BeginOutputReadLine();
-                p.BeginErrorReadLine();
-                p.WaitForExit();
-                _procAtivo = null;
-                if (p.ExitCode != 0) throw new Exception(erros.Length > 0 ? erros.ToString().Trim() : $"MotorRM encerrou com código {p.ExitCode}");
-            }
-        }
-    }
-}
-'@
-[System.IO.File]::WriteAllText("$agenteDir\Program.cs", $agenteCs, [System.Text.UTF8Encoding]::new($true))
-
-$csc = "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-& $csc /nologo /target:exe /platform:x64 /utf8output `
-    /out:"$pacoteDir\AgenteRM.exe" `
-    /r:System.dll /r:System.Core.dll /r:System.Net.Http.dll /r:System.ServiceProcess.dll /r:System.Web.Extensions.dll /r:System.Xml.dll /r:System.Xml.Linq.dll `
-    "$agenteDir\Program.cs"
-
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "AgenteRM.exe gerado com sucesso em: $pacoteDir\AgenteRM.exe" -ForegroundColor Green
-    Write-Host "Painel Web gerado em: $webDir\index.html" -ForegroundColor Green
-}
